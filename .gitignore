@@ -1,0 +1,14 @@
+venv/
+
+data/raw/
+*.tsv
+*.csv
+
+__pycache__/
+*.pyc
+.DS_Store
+.ipynb_checkpoints
+
+*.pkl
+
+.idea/
