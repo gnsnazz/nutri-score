@@ -59,8 +59,9 @@ class KnowledgeBase:
             new_cols['is_misleading_label'].append(1 if list(query(f"is_misleading_label({p_name}, {s}, {salt})")) else 0)
 
             try:
-                res = list(query(f"count_flags({s}, {fat}, {salt}, {f}, {fv}, {a}, {p}, {p_name}, Count)"))
-                score = res[0]['Count'] if res else 0
+                query_str = f"compute_risk_score({s}, {fat}, {salt}, {f}, {fv}, {a}, {p}, {p_name}, TotalScore)"
+                res = list(query(query_str))
+                score = res[0]['TotalScore'] if res else 0
             except:
                 score = 0
             new_cols['symbolic_score'].append(score)
