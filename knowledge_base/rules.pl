@@ -51,19 +51,26 @@ is_misleading_label(NameAtom, Sugar, Salt) :-
     threshold(salt, high, T_Salt),
     (Sugar > T_Sugar ; Salt > T_Salt),
     downcase_atom(NameAtom, NameLower),
-    marketing_keyword(Key),     % Prende una keyword dalla lista
-    sub_atom(NameLower, _, _, _, Key), % Cerca la keyword nel nome
-    !. % Cut: Appena ne trova una, si ferma (evita duplicati)
+    marketing_keyword(Key),
+    sub_atom(NameLower, _, _, _, Key),
+    !.
 
-% --- SYMBOLIC SCORE ---
-% Conta quante regole negative sono attive per un prodotto.
-% Restituisce un numero da 0 a N.
-count_flags(Sugar, Fat, Salt, Fiber, FruitVeg, Additives, _, Name, Count) :-
-    findall(1, (
-        is_empty_calories(Sugar, Fiber);
-        is_hidden_sodium(Salt, FruitVeg);
-        is_hyper_processed(Additives, Sugar, Salt);
-        is_low_fat_sugar_trap(Fat, Sugar);
-        is_misleading_label(Name, Sugar, Salt)
-    ), List),
-    length(List, Count).
+weight(is_misleading_label, 5).
+weight(is_empty_calories, 4).
+weight(is_hyper_processed, 4).
+weight(is_hidden_sodium, 3).
+weight(is_low_fat_sugar_trap, 3).
+
+% ---  CALCOLO SCORE PONDERATO ---
+% Somma i pesi di tutte le regole attive per ottenere un punteggio unico
+
+compute_risk_score(Sugar, Fat, Salt, Fiber, FruitVeg, Additives, _, Name, TotalScore) :-
+    findall(W, (
+        (is_empty_calories(Sugar, Fiber), weight(is_empty_calories, W));
+        (is_hidden_sodium(Salt, FruitVeg), weight(is_hidden_sodium, W));
+        (is_hyper_processed(Additives, Sugar, Salt), weight(is_hyper_processed, W));
+        (is_low_fat_sugar_trap(Fat, Sugar), weight(is_low_fat_sugar_trap, W));
+        (is_misleading_label(Name, Sugar, Salt), weight(is_misleading_label, W))
+    ), Weights),
+
+    sum_list(Weights, TotalScore).
