@@ -5,11 +5,7 @@ import pandas as pd
 from utils.preprocessor import process_and_save
 from knowledge_base.kb import KnowledgeBase
 from models.classifier import train_all_models
-
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-RAW_DATA_PATH = os.path.join(BASE_DIR, "dataset", "raw", "en.openfoodfacts.org.products.tsv")
-PROCESSED_DATA_PATH = os.path.join(BASE_DIR, "dataset", "processed", "dataset_nutrizione_pulito.csv")
-ENRICHED_DATA_PATH = os.path.join(BASE_DIR, "dataset", "processed", "nutriscore_products.csv")
+from config import PROCESSED_DATA_PATH, RAW_DATA_PATH, ENRICHED_DATA_PATH
 
 
 def main():
@@ -34,7 +30,7 @@ def main():
 
     print("Avvio Pipeline Machine Learning...")
 
-    trained_models = train_all_models(ENRICHED_DATA_PATH)
+    train_all_models(ENRICHED_DATA_PATH)
 
 if __name__ == "__main__":
     main()

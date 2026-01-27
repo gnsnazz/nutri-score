@@ -1,20 +1,17 @@
-import os
 import re
 import pandas as pd
+
 from pyswip import Prolog
+from config import FACTS_PATH, RULES_PATH
 
 class KnowledgeBase:
     def __init__(self):
         self.prolog = Prolog()
-        base_dir = os.path.dirname(os.path.abspath(__file__))
 
-        facts_path = os.path.join(base_dir, "facts.pl").replace("\\", "/")
-        rules_path = os.path.join(base_dir, "rules.pl").replace("\\", "/")
-
-        print(f"[KB] Caricamento Facts da: {facts_path}")
-        self.prolog.consult(facts_path)
-        print(f"[KB] Caricamento Rules da: {rules_path}")
-        self.prolog.consult(rules_path)
+        print(f"[KB] Caricamento Facts da: {FACTS_PATH}")
+        self.prolog.consult(FACTS_PATH.replace("\\", "/"))
+        print(f"[KB] Caricamento Rules da: {RULES_PATH}")
+        self.prolog.consult(RULES_PATH.replce("\\", "/"))
 
     def _clean_text(self, text: str) -> str:
         """Pulisce il testo per renderlo un atomo Prolog valido."""
@@ -68,7 +65,7 @@ class KnowledgeBase:
 
         # Concatenazione ottimizzata
         df_kb = pd.DataFrame(new_cols)
-        df_final = pd.concat([df.reset_index(drop=True), df_kb], axis=1)
+        df_final = pd.concat([df.reset_index(drop = True), df_kb], axis = 1)
 
         print("[KB] Ragionamento completato.")
         return df_final

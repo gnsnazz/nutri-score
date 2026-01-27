@@ -1,27 +1,24 @@
 import os
 import pandas as pd
+
+from config import FEATURES
+
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import StandardScaler
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
 from dataset.dataset import Dataset
 
-NUMERIC_FEATURES = [
-    'sugars_100g', 'fat_100g', 'salt_100g', 'fiber_100g',
-    'fruit_veg_100g', 'additives_n', 'proteins_100g',
-    'is_empty_calories', 'is_hidden_sodium', 'is_hyper_processed',
-    'is_high_satiety', 'is_low_fat_sugar_trap', 'is_misleading_label', "symbolic_score"
-]
 
 def build_preprocessor():
     transformers = []
 
-    if NUMERIC_FEATURES:
+    if FEATURES:
         num_pipeline = Pipeline([
             ('imputer', SimpleImputer(strategy = 'constant', fill_value = 0)),
             ('scaler', StandardScaler())
         ])
-        transformers.append(("num", num_pipeline, NUMERIC_FEATURES))
+        transformers.append(("num", num_pipeline, FEATURES))
 
     preprocessor = ColumnTransformer(
         transformers = transformers,
@@ -62,7 +59,7 @@ def process_and_save(raw_path, output_path, n_samples):
     df = df.dropna(subset = ['target'])
 
     # Solo colonne utili + target
-    cols_to_keep = [c for c in NUMERIC_FEATURES if c in df.columns] + ['target']
+    cols_to_keep = [c for c in FEATURES if c in df.columns] + ['target']
     df = df[cols_to_keep]
 
     # Riempimento base per salvare il CSV senza buchi
