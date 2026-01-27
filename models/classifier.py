@@ -4,6 +4,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 from utils.preprocessor import build_preprocessor
+from config import FEATURES, TARGET_COL, PLOTS_DIR
 
 from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
@@ -11,30 +12,22 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
 from sklearn.metrics import (
-    accuracy_score, precision_score, recall_score,
+    accuracy_score, precision_score, recall_score, confusion_matrix,
     f1_score, roc_auc_score, roc_curve, auc, classification_report, precision_recall_fscore_support
 )
-from sklearn.model_selection import StratifiedKFold, GridSearchCV, RandomizedSearchCV, train_test_split
-from sklearn.pipeline import Pipeline
+from sklearn.model_selection import StratifiedKFold, GridSearchCV, RandomizedSearchCV, train_test_split, cross_validate
+from imblearn.pipeline import Pipeline as ImbPipeline
+from imblearn.over_sampling import RandomOverSampler
 from sklearn.base import clone
 
-TARGET = "target"
-
-FEATURES = [
-    'sugars_100g', 'fat_100g', 'salt_100g', 'fiber_100g',
-    'fruit_veg_100g', 'additives_n', 'proteins_100g',
-    'is_empty_calories', 'is_hidden_sodium', 'is_hyper_processed',
-    'is_high_satiety', 'is_low_fat_sugar_trap', 'is_misleading_label', "symbolic_score"
-]
 
 def make_cv(random_state = 42):
     return StratifiedKFold(n_splits = 10, shuffle = True, random_state = random_state)
 
 
-def gridsearch_model(name, estimator, param_grid, x_train, y_train, scoring = "roc_auc", randomized = False, n_iter = 10,
-                     random_state = 42):
+def gridsearch_model(name, estimator, param_grid, x_train, y_train, scoring = "roc_auc", randomized = False, n_iter = 10, random_state = 42):
 
-    pipe = Pipeline([("preprocessor", build_preprocessor()), ("model", estimator)])
+    pipe = ImbPipeline(steps=[("preprocessor", build_preprocessor()), ('oversampler', RandomOverSampler(random_state = 42)), ("model", estimator)])
     cv = make_cv(random_state)
 
     if randomized:
@@ -67,6 +60,19 @@ def gridsearch_model(name, estimator, param_grid, x_train, y_train, scoring = "r
     return search.best_estimator_
 
 
+def print_cv_report(model, x, y, name):
+    print(f"\n  Report {name} (10-Fold CV)")
+    # Calcoliamo le metriche su tutti i fold
+    scoring = ['accuracy', 'precision', 'recall', 'f1', 'roc_auc']
+    results = cross_validate(model, x, y, cv = 10, scoring = scoring, n_jobs = 2)
+
+    for metric in scoring:
+        key = f"test_{metric}"
+        mean_val = results[key].mean()
+        std_val = results[key].std()
+        print(f"   {metric.capitalize():<10}: {mean_val:.4f} ± {std_val:.4f}")
+
+
 def train_all_models(csv_path):
     df = pd.read_csv(csv_path)
 
@@ -76,7 +82,7 @@ def train_all_models(csv_path):
         return {}
 
     x = df[FEATURES]
-    y = df[TARGET]
+    y = df[TARGET_COL]
 
     print(">> Splitting Dataset 80/20...")
     x_train, x_test, y_train, y_test = train_test_split(
@@ -111,15 +117,18 @@ def train_all_models(csv_path):
             randomized = (name == "MLP"), n_iter = 4
         )
 
-        # Valutazione
-        best_thr = tune_threshold(best_model, x_train, y_train)
-        evaluate_model(best_model, x_test, y_test, name, threshold = best_thr)
+        print_cv_report(best_model, x_train, y_train, name)
 
         # Grafico ROC
         safe_name = name.replace(" ", "_").lower()
-        plot_path = f"plots/roc_{safe_name}.png"
-
+        plot_path = f"{PLOTS_DIR}/roc_{safe_name}.png"
         plot_mean_roc_cv(best_model, x_train, y_train, f"{name} - ROC (CV)", plot_path)
+
+        # Valutazione
+        best_metrics = tune_threshold(best_model, x_train, y_train, label = name)
+        best_thr = best_metrics["thr"]
+
+        evaluate_model(best_model, x_test, y_test, name, threshold = best_thr)
 
         trained_models[name] = best_model
 
@@ -148,29 +157,55 @@ def evaluate_model(model, x_test, y_test, name, threshold = 0.5):
     print("\n" + classification_report(y_test, y_pred))
 
 
-def tune_threshold(model, x, y):
-    """
-    Trova la soglia di probabilità che massimizza l'F1-Score.
-    """
+def tune_threshold(model, x, y, label = "Model", thresholds = None, print_table = True):
     if not hasattr(model, "predict_proba"):
-        return 0.5
+        return {"thr": 0.5}
+
+    if thresholds is None:
+        thresholds = np.arange(0.05, 1.00, 0.05)
 
     y_proba = model.predict_proba(x)[:, 1]
-    thresholds = np.arange(0.1, 0.95, 0.05)
 
-    best_thr = 0.5
-    best_f1 = 0.0
+    if print_table:
+        print(f"\n=== Tuning Soglia — {label} ===")
+        print("thr   prec_1  rec_1   f1_1    FP    FN")
+        print("----------------------------------------")
+
+    best = {
+        "thr": 0.5, "prec_1": 0.0, "rec_1": 0.0, "f1_1": 0.0, "fp": 0, "fn": 0
+    }
 
     for thr in thresholds:
         y_pred = (y_proba >= thr).astype(int)
-        _, _, f1, _ = precision_recall_fscore_support(y, y_pred, average = 'binary', zero_division = 0)
 
-        if f1 > best_f1:
-            best_f1 = f1
-            best_thr = thr
+        prec, rec, f1, _ = precision_recall_fscore_support(
+            y, y_pred, average = None, labels = [0, 1], zero_division = 0
+        )
 
-    print(f"   [Thresholding] Miglior soglia trovata: {best_thr:.2f} (F1: {best_f1:.4f})")
-    return best_thr
+        p1 = float(prec[1]) if len(prec) > 1 else 0.0
+        r1 = float(rec[1]) if len(rec) > 1 else 0.0
+        f1_1 = float(f1[1]) if len(f1) > 1 else 0.0
+
+        cm = confusion_matrix(y, y_pred, labels = [0, 1])
+        fp = int(cm[0, 1])  # Falsi Positivi
+        fn = int(cm[1, 0])  # Falsi Negativi
+
+        if print_table:
+            print(f"{thr:0.2f}  {p1:0.4f}  {r1:0.4f}  {f1_1:0.4f}  {fp:4d}  {fn:3d}")
+
+        if f1_1 > best["f1_1"]:
+            best = {
+                "thr": round(float(thr), 2),
+                "prec_1": p1, "rec_1": r1, "f1_1": f1_1,
+                "fp": fp, "fn": fn
+            }
+
+    print(
+        f">>> Miglior soglia (max F1): {best['thr']:.2f} "
+        f"| F1={best['f1_1']:.4f} | FP={best['fp']} FN={best['fn']}"
+    )
+
+    return best
 
 
 def predict_with_threshold(model, x, threshold = 0.5):
