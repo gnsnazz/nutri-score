@@ -40,7 +40,6 @@ isa(ham, processed_meat).
 isa(sausage, processed_meat).
 isa(salami, processed_meat).
 
-% Ereditarietà transitiva
 is_a(X, Y) :- isa(X, Y).
 is_a(X, Z) :- isa(X, Y), is_a(Y, Z).
 
