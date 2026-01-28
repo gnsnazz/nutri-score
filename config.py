@@ -21,9 +21,21 @@ TARGET_COL = "target"
 
 # Features Numeriche
 FEATURES = [
-    'sugars_100g', 'fat_100g', 'salt_100g', 'fiber_100g',
-    'fruit_veg_100g', 'additives_n', 'proteins_100g',
-    'is_empty_calories', 'is_hidden_sodium', 'is_hyper_processed',
-    'is_high_satiety', 'is_low_fat_sugar_trap', 'is_misleading_label',
+    'sugars_100g',
+    'fat_100g',
+    'salt_100g',
+    'fiber_100g',
+    'fruit_veg_100g',
+    'additives_n',
+    'proteins_100g',
+    'carbohydrates_100g',
+    'is_empty_calories',
+    'is_hidden_sodium',
+    'is_hyper_processed',
+    'is_low_fat_sugar_trap',
+    'is_hyperpalatable',
+    'violates_expectations',
+    'is_functionally_inconsistent',
+    'is_ultra_processed_combo',
     'symbolic_score'
 ]

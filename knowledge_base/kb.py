@@ -11,7 +11,7 @@ class KnowledgeBase:
         print(f"[KB] Caricamento Facts da: {FACTS_PATH}")
         self.prolog.consult(FACTS_PATH.replace("\\", "/"))
         print(f"[KB] Caricamento Rules da: {RULES_PATH}")
-        self.prolog.consult(RULES_PATH.replce("\\", "/"))
+        self.prolog.consult(RULES_PATH.replace("\\", "/"))
 
     def _clean_text(self, text: str) -> str:
         """Pulisce il testo per renderlo un atomo Prolog valido."""
@@ -20,6 +20,14 @@ class KnowledgeBase:
         clean = re.sub(r'[^a-zA-Z0-9\s]', '', str(text))
         return clean.lower()
 
+    def _query_safe(self, query_str: str):
+        """Esegue query Prolog con gestione errori."""
+        try:
+            result = list(self.prolog.query(query_str))
+            return 1 if result else 0
+        except:
+            return 0
+
     def apply_reasoning(self, df: pd.DataFrame) -> pd.DataFrame:
         print(f"[KB] Avvio ragionamento su {len(df)} prodotti...")
 
@@ -27,9 +35,11 @@ class KnowledgeBase:
             'is_empty_calories': [],
             'is_hidden_sodium': [],
             'is_hyper_processed': [],
-            'is_high_satiety': [],
             'is_low_fat_sugar_trap': [],
-            'is_misleading_label': [],
+            'is_hyperpalatable': [],
+            'violates_expectations': [],
+            'is_functionally_inconsistent': [],
+            'is_ultra_processed_combo': [],
             'symbolic_score': []
         }
 
@@ -44,19 +54,30 @@ class KnowledgeBase:
             a = row.get('additives_n', 0)
             p = row.get('proteins_100g', 0)
             fat = row.get('fat_100g', 0)
+            c = row.get('carbohydrates_100g', 0)
 
             clean_name = self._clean_text(row.get('product_name', ''))
             p_name = f"'{clean_name}'"
 
-            new_cols['is_empty_calories'].append(1 if list(query(f"is_empty_calories({s}, {f})")) else 0)
-            new_cols['is_hidden_sodium'].append(1 if list(query(f"is_hidden_sodium({salt}, {fv})")) else 0)
-            new_cols['is_hyper_processed'].append(1 if list(query(f"is_hyper_processed({a}, {s}, {salt})")) else 0)
-            new_cols['is_high_satiety'].append(1 if list(query(f"is_high_satiety({p}, {f})")) else 0)
-            new_cols['is_low_fat_sugar_trap'].append(1 if list(query(f"is_low_fat_sugar_trap({fat}, {s})")) else 0)
-            new_cols['is_misleading_label'].append(1 if list(query(f"is_misleading_label({p_name}, {s}, {salt})")) else 0)
+            new_cols['is_empty_calories'].append(
+                self._query_safe(f"is_empty_calories({s}, {f})"))
+            new_cols['is_hidden_sodium'].append(
+                self._query_safe(f"is_hidden_sodium({salt}, {fv})"))
+            new_cols['is_hyper_processed'].append(
+                self._query_safe(f"is_hyper_processed({a}, {s}, {salt})"))
+            new_cols['is_low_fat_sugar_trap'].append(
+                self._query_safe(f"is_low_fat_sugar_trap({fat}, {s})"))
+            new_cols['is_hyperpalatable'].append(
+                self._query_safe(f"is_hyperpalatable({s}, {fat})"))
+            new_cols['violates_expectations'].append(
+                self._query_safe(f"violates_category_expectation({p_name}, _, _)"))
+            new_cols['is_functionally_inconsistent'].append(
+                self._query_safe(f"is_functionally_inconsistent({p_name}, {p}, {s})"))
+            new_cols['is_ultra_processed_combo'].append(
+                self._query_safe(f"is_ultra_processed_combo({a}, {s}, {salt})"))
 
             try:
-                query_str = f"compute_risk_score({s}, {fat}, {salt}, {f}, {fv}, {a}, {p}, {p_name}, TotalScore)"
+                query_str = f"compute_risk_score({s}, {fat}, {salt}, {f}, {fv}, {a}, {p}, {c}, {p_name}, TotalScore)"
                 res = list(query(query_str))
                 score = res[0]['TotalScore'] if res else 0
             except:

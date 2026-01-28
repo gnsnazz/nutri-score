@@ -3,8 +3,8 @@ import pandas as pd
 
 from config import FEATURES
 
-from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import StandardScaler
+from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
 from dataset.dataset import Dataset
