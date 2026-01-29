@@ -1,13 +1,13 @@
 % SOGLIE NUTRIZIONALI
 
-threshold(sugar, high, 15.0).
-threshold(sugar, very_high, 30.0).
 threshold(fat, low, 3.0).
 threshold(fat, high, 20.0).
 threshold(salt, high, 1.5).
 threshold(fiber, good, 3.0).
 threshold(protein, good, 5.0).
 threshold(protein, high, 10.0).
+threshold(sugar, high, 15.0).
+threshold(sugar, very_high, 30.0).
 threshold(fruit_veg, low, 40.0).
 threshold(additives, max, 3).
 
@@ -63,6 +63,13 @@ expected_nutrient(condiment, sugar, 0.0, 15.0).
 
 expected_nutrient(processed_meat, salt, 0.0, 2.5).
 expected_nutrient(processed_meat, protein, 10.0, 25.0).
+
+inherits_expectation(Category, Nutrient, Min, Max) :-
+    expected_nutrient(Category, Nutrient, Min, Max).
+
+inherits_expectation(Category, Nutrient, Min, Max) :-
+    is_a(Category, ParentCategory),
+    expected_nutrient(ParentCategory, Nutrient, Min, Max).
 
 keyword_category(yogurt, yogurt).
 keyword_category(yoghurt, yogurt).
@@ -129,6 +136,8 @@ marketing_keyword('zero').
 marketing_keyword('balance').
 marketing_keyword('healthy').
 marketing_keyword('slim').
+
+critical_ratio(sugar_fat, 0.5, 2.0).
 
 primary_function(dairy, protein_source).
 primary_function(cereal, energy_source).
