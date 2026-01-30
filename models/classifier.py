@@ -62,7 +62,7 @@ def gridsearch_model(name, estimator, param_grid, x_train, y_train, scoring = "r
 
 def print_cv_report(model, x, y, name):
     print(f"\n  Report {name} (10-Fold CV)")
-    # Calcoliamo le metriche su tutti i fold
+    # Calcola le metriche su tutti i fold
     scoring = ['accuracy', 'precision', 'recall', 'f1', 'roc_auc']
     results = cross_validate(model, x, y, cv = 10, scoring = scoring, n_jobs = 2)
 

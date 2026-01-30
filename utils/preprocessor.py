@@ -30,7 +30,7 @@ def build_preprocessor():
 
 def process_and_save(raw_path, output_path, n_samples):
     """
-    Pulisce il CSV Raw e lo salva in formato leggibile.
+    Pulisce il dataset raw e lo salva in formato leggibile.
     """
     print(f"[Preprocessor] Caricamento raw da: {raw_path}")
 
